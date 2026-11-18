@@ -1,0 +1,35 @@
+# Start auf dem Server:  docker compose up -d --build
+# Sync von Hand:         docker compose run --rm sync
+services:
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_GOOGLE_MAPS_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_KEY}
+        NEXT_PUBLIC_GOOGLE_MAP_ID: ${NEXT_PUBLIC_GOOGLE_MAP_ID}
+    env_file: .env
+    restart: unless-stopped
+
+  # Holt automatisch ein HTTPS-Zertifikat für trees.inception.green
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - web
+    restart: unless-stopped
+
+  sync:
+    build:
+      context: .
+      target: sync
+    env_file: .env
+    profiles: ["sync"]
+
+volumes:
+  caddy_data:
