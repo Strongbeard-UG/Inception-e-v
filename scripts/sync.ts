@@ -16,6 +16,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const args = new Set(process.argv.slice(2));
 const DRY_RUN = args.has("--dry-run");
 const ONLY = [...args].find((a) => a.startsWith("--only="))?.split("=")[1];
+// --export=datei.csv schreibt die Bäume zusätzlich als CSV (für den Import im Supabase-Tabelleneditor)
+const EXPORT = [...args].find((a) => a.startsWith("--export="))?.split("=")[1];
 
 const env = (k: string, fallback?: string) => {
   const v = process.env[k] ?? fallback;
@@ -292,6 +294,12 @@ async function main() {
       summary.treesExpected = expected;
       summary.treesFetched = trees.length;
       log(`Greenstand: ${trees.length} von ${expected} Bäumen geholt`);
+      if (EXPORT) {
+        const { writeFileSync } = await import("node:fs");
+        const csv = ["greenstand_id,lat,lng", ...trees.map((t) => `${t.greenstand_id},${t.lat},${t.lng}`)].join("\n");
+        writeFileSync(EXPORT, csv + "\n");
+        log(`CSV geschrieben: ${EXPORT}`);
+      }
 
       if (db) {
         const { data: siteRows } = await db.from("sites").select("id,lat,lng").not("lat", "is", null);
